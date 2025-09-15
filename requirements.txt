@@ -1,0 +1,7 @@
+flask==3.0.3
+yt-dlp==2024.08.06
+pytube==15.0.0
+opencv-python
+moviepy
+requests
+tkinter
