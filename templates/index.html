@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Download for Educational</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div id="clock" class="clock"></div>
+        <h2>Welcome to Video Download for Educational</h2>
+        <label for="url">Paste Video URL:</label>
+        <input type="text" id="url" class="animated-border" placeholder="Enter video URL here" onblur="fetchQualities()">
+        <label for="quality">Select Quality:</label>
+        <select id="quality" class="animated-border">
+            <option value="">Paste URL to load qualities</option>
+        </select>
+        <button class="animated-border" onclick="startDownload()">Download</button>
+        <div id="progress">
+            <div id="status"></div>
+            <div id="bar">
+                <div id="barfill"></div>
+            </div>
+            <div id="speed"></div>
+            <div id="eta"></div>
+        </div>
+    </div>
+    <script src="/static/index.js"></script>
+    <script>
+        // Digital clock for GMT+5:30
+        function updateClock() {
+            const now = new Date();
+            // Convert to GMT+5:30
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const gmt530 = new Date(utc + (5.5 * 60 * 60 * 1000));
+            let h = gmt530.getHours().toString().padStart(2, '0');
+            let m = gmt530.getMinutes().toString().padStart(2, '0');
+            let s = gmt530.getSeconds().toString().padStart(2, '0');
+            document.getElementById('clock').innerText = `${h}:${m}:${s}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body>
+</html>

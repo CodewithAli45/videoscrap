@@ -1,0 +1,152 @@
+body {
+    background: linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%);
+    font-family: 'Roboto', Arial, sans-serif;
+    min-height: 100vh;
+    margin: 0;
+}
+.container {
+    max-width: 430px;
+    margin: 60px auto;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    padding: 36px 32px 32px 32px;
+}
+.clock {
+    text-align: center;
+    font-size: 40px;
+    color: #007bff;
+    font-weight: 700;
+    margin-bottom: 18px;
+    letter-spacing: 2px;
+}
+h2 {
+    text-align: center;
+    color: #2d3a4b;
+    margin-bottom: 24px;
+    font-weight: 700;
+}
+label {
+    color: #2d3a4b;
+    font-weight: 500;
+    margin-bottom: 6px;
+    display: block;
+}
+input[type="text"], select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 2px solid #b0c4de;
+    border-radius: 6px;
+    font-size: 16px;
+    margin-bottom: 18px;
+    background: #f7fafd;
+    transition: border 0.2s;
+    display: block;
+    position: relative;
+    z-index: 1;
+    outline: none;
+}
+input[type="text"]:focus, select:focus {
+    border: 2px solid transparent;
+    background: #f7fafd;
+}
+input[type="text"].animated-border, select.animated-border {
+    border: 2px solid transparent;
+    background: #f7fafd;
+    background-clip: padding-box;
+}
+input[type="text"].animated-border:focus, select.animated-border:focus {
+    animation: border-gradient 2s linear infinite;
+    border-image: linear-gradient(270deg, #66a6ff, #89f7fe, #66a6ff) 1;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    background: radial-gradient(circle at center, #66a6ff 0%, #0e2a2c 100%);
+    color: #fff;
+    border: 2px solid #66a6ff;
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(102,166,255,0.15);
+    transition: background 0.4s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
+button::before {
+    content: '';
+    position: absolute;
+    top: -2px; left: -2px; right: -2px; bottom: -2px;
+    border-radius: 8px;
+    padding: 0;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    animation: border-rotate 2s linear infinite;
+}
+button:hover::before, button:focus::before {
+    opacity: 1;
+}
+button:hover, button:focus {
+    background: radial-gradient(circle at center, #e7a541 0%, #66a6ff 100%);
+    box-shadow: 0 6px 24px rgba(102,166,255,0.25);
+}
+@keyframes border-rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+@keyframes border-gradient {
+    0% { border-image-source: linear-gradient(270deg, #66a6ff, #89f7fe, #66a6ff); }
+    100% { border-image-source: linear-gradient(630deg, #66a6ff, #89f7fe, #66a6ff); }
+}
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background: #f7fafd;
+    position: relative;
+    z-index: 1;
+}
+select.animated-border:focus {
+    animation: border-gradient 2s linear infinite;
+    border-image: linear-gradient(270deg, #66a6ff, #89f7fe, #66a6ff) 1;
+}
+#progress {
+    margin-top: 28px;
+}
+#status {
+    text-align: center;
+    font-size: 15px;
+    color: #2d3a4b;
+    margin-bottom: 10px;
+}
+#bar {
+    width: 100%;
+    background: #e3eafc;
+    height: 23px;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+#barfill {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #66a6ff 0%, #89f7fe 100%);
+    transition: width 0.4s;
+}
+#speed, #eta {
+    text-align: center;
+    font-size: 13px;
+    color: #4a5a6a;
+}
+@media (max-width: 600px) {
+    .container {
+        max-width: 98vw;
+        padding: 18px 6vw 18px 6vw;
+    }
+}
