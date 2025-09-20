@@ -1,12 +1,18 @@
 # utils/youtube_dl_helper.py
 import yt_dlp
+import os
+
+COOKIES_FILE = os.environ.get('YTDLP_COOKIES', 'cookies.txt')
 
 
 def get_video_qualities(url):
     formats = []
     thumbnail_url = None
     try:
-        with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+        ydl_opts = {'quiet': True}
+        if os.path.exists(COOKIES_FILE):
+            ydl_opts['cookiefile'] = COOKIES_FILE
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             thumbnail_url = info.get('thumbnail')
             for f in info.get('formats', []):
@@ -36,9 +42,9 @@ def get_download_url(url, format_id):
         'format': format_id,
         # We don't want to download, just get the URL
         'simulate': True,
-        # 'quiet': True,
-        # 'no_warnings': True,
     }
+    if os.path.exists(COOKIES_FILE):
+        ydl_opts['cookiefile'] = COOKIES_FILE
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
         # The 'url' key in the format info is the direct HTTP link to the file
