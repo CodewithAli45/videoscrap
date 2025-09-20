@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: videoscrap
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:10000
+    envVars:
+      - key: PORT
+        value: 10000
+    autoDeploy: true
+    region: oregon

@@ -32,6 +32,13 @@ async function fetchQualities() {
         } else {
             qualitySelect.innerHTML = '<option>No qualities found</option>';
         }
+        // Show poster if available
+        const posterDiv = document.getElementById('poster');
+        if (data.thumbnail) {
+            posterDiv.innerHTML = `<img src="${data.thumbnail}" alt="Video poster" style="width:250px;height:auto;display:block;margin:10px auto 20px auto;border-radius:8px;box-shadow:0 2px 8px #aaa;">`;
+        } else {
+            posterDiv.innerHTML = '';
+        }
     } catch (error) {
         qualitySelect.innerHTML = '<option>Error loading qualities</option>';
         alert('Error: ' + error.message);
@@ -65,43 +72,36 @@ async function startDownload() {
 
 async function pollProgress() {
     if (!downloadId) return;
-
     try {
         const response = await fetch(`/api/progress/${downloadId}`);
-        const data = await response.json();
-
+        let data;
+        try {
+            data = await response.json();
+        } catch (e) {
+            const text = await response.text();
+            throw new Error('Server did not return JSON. Response was: ' + text);
+        }
         // Update the progress bar with the server's task progress (getting the link)
-        document.getElementById('bar-fill').style.width = data.percent + '%';
-        document.getElementById('details').textContent = `Progress: ${Math.round(data.percent)}% - ${data.status}`;
-
+        document.getElementById('barfill').style.width = data.percent + '%';
+        document.getElementById('status').textContent = data.status;
+        document.getElementById('speed').textContent = '';
+        document.getElementById('eta').textContent = '';
         if (data.done) {
             if (data.direct_url) {
-                // SUCCESS! The server found the direct link.
                 document.getElementById('status').textContent = 'Starting your download now...';
-                document.getElementById('details').textContent = 'The download will appear in your browser\'s download manager.';
-
-                // Show the manual link just in case
-                const downloadLink = document.getElementById('download-link');
-                downloadLink.href = data.direct_url;
-                downloadLink.style.display = 'block';
-                downloadLink.textContent = 'Click here if the download does not start automatically.';
-
-                // TRIGGER THE DOWNLOAD IN THE USER'S BROWSER
-                window.location.href = data.direct_url;
-
+                // Option 1: Proxy download to force browser download
+                window.location.href = `/api/proxy_download/${downloadId}`;
+                // Option 2: Playback page with download button (commented)
+                // window.location.href = `/api/playback/${downloadId}`;
             } else {
-                // The server encountered an error getting the link
                 document.getElementById('status').textContent = 'Error: Failed to prepare download.';
-                document.getElementById('details').textContent = data.status || 'Unknown error occurred.';
             }
-            // Stop polling
             return;
         }
-        // If not done, check again in a second
         setTimeout(pollProgress, 1000);
     } catch (error) {
-        console.error("Polling error:", error);
-        setTimeout(pollProgress, 1000);
+        document.getElementById('status').textContent = 'Error: ' + error.message;
+        setTimeout(pollProgress, 2000);
     }
 }
 

@@ -1,11 +1,14 @@
 # utils/youtube_dl_helper.py
 import yt_dlp
 
+
 def get_video_qualities(url):
     formats = []
+    thumbnail_url = None
     try:
         with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
             info = ydl.extract_info(url, download=False)
+            thumbnail_url = info.get('thumbnail')
             for f in info.get('formats', []):
                 # Only look for video formats (that have a video codec)
                 if f.get('vcodec') != 'none':
@@ -24,7 +27,7 @@ def get_video_qualities(url):
                 unique_formats.append(fmt)
                 seen.add(fmt['id'])
         unique_formats.sort(key=lambda x: x['height'] or 0, reverse=True)
-        return unique_formats
+        return {'formats': unique_formats, 'thumbnail': thumbnail_url}
     except Exception as e:
         raise e
 
