@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const args = ['-j', '--no-warnings', '--no-playlist', '--ignore-config'];
     
     // Check if cookies.txt exists in root directory
-    const cookiesPath = path.resolve(process.cwd(), 'cookies.txt');
+    const cookiesPath = path.resolve(/*turbopackIgnore: true*/ process.cwd(), 'cookies.txt');
     if (fs.existsSync(cookiesPath)) {
       args.push('--cookies', cookiesPath);
     }

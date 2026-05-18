@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
         const args = ['-g', '-f', quality_id, '--ignore-config'];
         
         // Append cookies if present
-        const cookiesPath = path.resolve(process.cwd(), 'cookies.txt');
+        const cookiesPath = path.resolve(/*turbopackIgnore: true*/ process.cwd(), 'cookies.txt');
         if (fs.existsSync(cookiesPath)) {
           args.push('--cookies', cookiesPath);
         }

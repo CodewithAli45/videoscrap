@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       
       // 2. Clear temp files in local root
       const tempExtensions = ['.part', '.ytdl', '.temp'];
-      const rootDir = process.cwd();
+      const rootDir = path.resolve(/*turbopackIgnore: true*/ process.cwd(), '.');
       let clearedCount = 0;
       
       const files = fs.readdirSync(rootDir);
