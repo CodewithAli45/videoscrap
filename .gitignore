@@ -213,3 +213,11 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Next.js Build Outputs & Local Files
+.next/
+out/
+node_modules/
+downloads.db
+downloads.db-journal
+cookies.txt
