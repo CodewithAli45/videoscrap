@@ -1,6 +1,5 @@
-import sqlite3 from 'sqlite3';
-import { open, Database } from 'sqlite';
 import path from 'path';
+import type { Database } from 'sqlite';
 
 let dbInstance: Database | null = null;
 
@@ -21,6 +20,10 @@ export async function getDb(): Promise<Database> {
     return dbInstance;
   }
 
+  // Lazy-load native C++ modules at runtime to completely prevent Vercel static build evaluation crashes
+  const sqlite3 = await import('sqlite3');
+  const { open } = await import('sqlite');
+
   // On Vercel or Serverless, process.cwd() is read-only. Use /tmp/ downloads.db as a writable fallback.
   const isServerless = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
   const dbPath = isServerless 
@@ -29,7 +32,7 @@ export async function getDb(): Promise<Database> {
   
   dbInstance = await open({
     filename: dbPath,
-    driver: sqlite3.Database
+    driver: sqlite3.default.Database
   });
 
   // Create table if it doesn't exist
