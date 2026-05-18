@@ -8,6 +8,8 @@ import { getYtdlpPath } from '@/lib/ytdlp';
 
 const execFilePromise = promisify(execFile);
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

@@ -4,6 +4,8 @@ import { promisify } from 'util';
 
 const execPromise = promisify(exec);
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const { password } = await req.json();

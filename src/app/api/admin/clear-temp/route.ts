@@ -7,6 +7,8 @@ import { getYtdlpPath } from '@/lib/ytdlp';
 
 const execFilePromise = promisify(execFile);
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const { password } = await req.json();

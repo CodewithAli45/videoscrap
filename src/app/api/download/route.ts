@@ -6,6 +6,8 @@ import path from 'path';
 import { addJob, updateJobProgress } from '@/lib/db';
 import { getYtdlpPath } from '@/lib/ytdlp';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const { url, quality_id, title, thumbnail } = await req.json();

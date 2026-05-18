@@ -3,6 +3,8 @@ import { clearAllDbJobs } from '@/lib/db';
 import fs from 'fs';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const { password } = await req.json();
