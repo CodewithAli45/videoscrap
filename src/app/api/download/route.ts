@@ -25,8 +25,16 @@ export async function GET(req: NextRequest) {
     const filename = `${cleanTitle}.${ext}`;
 
     const headers = new Headers();
-    headers.set('Content-Type', response.headers.get('Content-Type') || 'video/mp4');
     headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+    
+    // Forward crucial streaming performance headers to enable multi-threaded browser downloading
+    const perfHeaders = ['content-type', 'content-length', 'accept-ranges', 'content-range', 'cache-control'];
+    for (const h of perfHeaders) {
+      const val = response.headers.get(h);
+      if (val) {
+        headers.set(h, val);
+      }
+    }
     
     // Support streaming download chunks straight to the browser download folder on-the-fly!
     return new NextResponse(response.body, {

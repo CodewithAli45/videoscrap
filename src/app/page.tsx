@@ -160,6 +160,35 @@ export default function VideoDownloader() {
     }
   };
 
+  // Trigger direct download of CDN link for maximum direct speed
+  const handleDirectDownload = () => {
+    if (!preview || !selectedQuality) return;
+    setStatusMessage('');
+    
+    const selectedFormat = preview.qualities.find(q => q.id === selectedQuality);
+    if (!selectedFormat || !selectedFormat.url) {
+      alert('Could not find direct download URL.');
+      return;
+    }
+    
+    // Add to sessionStorage history list
+    const newHistoryItem: HistoryItem = {
+      job_id: Math.random().toString(36).substring(7),
+      title: preview.title,
+      status: 'completed',
+      percent: 100,
+      created_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      direct_url: selectedFormat.url
+    };
+    
+    const updatedHistory = [newHistoryItem, ...history].slice(0, 10);
+    setHistory(updatedHistory);
+    sessionStorage.setItem('download_history', JSON.stringify(updatedHistory));
+    
+    setStatusMessage('Opening direct high-speed download link...');
+    window.open(selectedFormat.url, '_blank');
+  };
+
   // Open password verification modal
   const openPasswordModal = (action: 'update' | 'clear-temp' | 'clear-history') => {
     setPassword('');
@@ -309,14 +338,24 @@ export default function VideoDownloader() {
             </select>
           </div>
 
-          <button
-            className="primary-btn"
-            style={{ margin: 0 }}
-            onClick={handleStartDownload}
-            disabled={!selectedQuality}
-          >
-            Download Video
-          </button>
+          <div style={{ display: 'flex', gap: '10px', width: '100%', marginTop: '4px' }}>
+            <button
+              className="primary-btn"
+              style={{ margin: 0, flex: 1 }}
+              onClick={handleStartDownload}
+              disabled={!selectedQuality}
+            >
+              Download (Proxy)
+            </button>
+            <button
+              className="primary-btn"
+              style={{ margin: 0, flex: 1, background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' }}
+              onClick={handleDirectDownload}
+              disabled={!selectedQuality}
+            >
+              ⚡ Fast Direct Link
+            </button>
+          </div>
         </div>
       )}
 
