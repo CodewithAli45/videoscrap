@@ -1,87 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { execFile } from 'child_process';
-import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
-import { addJob, updateJobProgress } from '@/lib/db';
-import { getYtdlpPath } from '@/lib/ytdlp';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const { url, quality_id, title, thumbnail } = await req.json();
+    const { searchParams } = new URL(req.url);
+    const directUrl = searchParams.get('url');
+    const title = searchParams.get('title') || 'video';
+    const ext = searchParams.get('ext') || 'mp4';
 
-    if (!url || !quality_id) {
-      return NextResponse.json({ error: 'URL and quality_id are required' }, { status: 400 });
+    if (!directUrl) {
+      return NextResponse.json({ error: 'Direct URL is required' }, { status: 400 });
     }
 
-    const job_id = crypto.randomUUID();
-    const finalTitle = title || 'video';
-    const finalThumbnail = thumbnail || '';
+    // Fetch the raw video stream from the provider's direct URL
+    const response = await fetch(directUrl);
 
-    // Add job to database with status 'processing' and 10% progress
-    await addJob({
-      job_id,
-      url,
-      title: finalTitle,
-      thumbnail: finalThumbnail,
-      status: 'processing',
-      file_path: '' // Will store the direct URL or format ID here
-    });
+    if (!response.ok) {
+      return NextResponse.json({ error: `Failed to fetch video stream: ${response.statusText}` }, { status: 500 });
+    }
+
+    // Prepare attachment filename
+    const cleanTitle = title.replace(/[^\w\s.-]/gi, '_');
+    const filename = `${cleanTitle}.${ext}`;
+
+    const headers = new Headers();
+    headers.set('Content-Type', response.headers.get('Content-Type') || 'video/mp4');
+    headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
     
-    await updateJobProgress(job_id, 10, 'processing');
-
-    // Run the yt-dlp extraction in the background (detached / asynchronous)
-    // We will get the direct download URL
-    const runTask = async () => {
-      try {
-        const args = ['-g', '-f', quality_id, '--ignore-config'];
-        
-        // Append cookies if present
-        const cookiesPath = path.resolve(/*turbopackIgnore: true*/ process.cwd(), 'cookies.txt');
-        if (fs.existsSync(cookiesPath)) {
-          args.push('--cookies', cookiesPath);
-        }
-        
-        // Append URL
-        args.push(url);
-
-        // Update to 50% progress
-        await updateJobProgress(job_id, 50, 'processing');
-
-        execFile(getYtdlpPath(), args, { maxBuffer: 10 * 1024 * 1024 }, async (error, stdout, stderr) => {
-          if (error) {
-            console.error(`yt-dlp error for job ${job_id}:`, error);
-            await updateJobProgress(job_id, 0, 'failed', undefined, error.message || 'Failed to fetch direct URL.');
-            return;
-          }
-
-          const directUrl = stdout.trim();
-          if (!directUrl) {
-            await updateJobProgress(job_id, 0, 'failed', undefined, 'No direct URL returned.');
-            return;
-          }
-
-          // Complete the job, storing the direct URL in file_path and the quality_id in error (so we know which quality was used if we need to regenerate)
-          await updateJobProgress(job_id, 100, 'completed', directUrl, quality_id);
-        });
-      } catch (err: any) {
-        console.error(`Background task exception for job ${job_id}:`, err);
-        await updateJobProgress(job_id, 0, 'failed', undefined, err.message || 'Failed in background task.');
-      }
-    };
-
-    // Trigger the background task without awaiting it
-    runTask();
-
-    return NextResponse.json({
-      id: job_id,
-      message: 'Download process initiated'
+    // Support streaming download chunks straight to the browser download folder on-the-fly!
+    return new NextResponse(response.body, {
+      headers
     });
 
   } catch (err: any) {
-    console.error('API /api/download error:', err);
-    return NextResponse.json({ error: err.message || 'An unexpected error occurred.' }, { status: 500 });
+    console.error('Stateless stream proxy error:', err);
+    return NextResponse.json({ error: err.message || 'Streaming failed.' }, { status: 500 });
   }
 }

@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
               id: f.format_id,
               label: `${label} (${f.ext || 'mp4'})`,
               height: f.height || 0,
-              ext: f.ext || 'mp4'
+              ext: f.ext || 'mp4',
+              url: f.url || info.url || null
             });
           }
         }

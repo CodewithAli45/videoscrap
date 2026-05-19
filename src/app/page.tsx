@@ -9,6 +9,7 @@ interface Quality {
   label: string;
   height: number;
   ext: string;
+  url: string | null;
 }
 
 interface PreviewData {
@@ -32,7 +33,6 @@ export default function VideoDownloader() {
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [selectedQuality, setSelectedQuality] = useState('');
-  const [downloadJobId, setDownloadJobId] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<{ status: string; percent: number; done: boolean } | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   
@@ -43,19 +43,20 @@ export default function VideoDownloader() {
   });
   const [password, setPassword] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
-  
-  const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch download history
-  const fetchHistory = async () => {
-    try {
-      const res = await fetch('/api/history');
-      if (res.ok) {
-        const data = await res.json();
-        setHistory(data.history || []);
+  // Fetch download history from browser-cached sessionStorage (deleted when window/tab is closed)
+  const fetchHistory = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = sessionStorage.getItem('download_history');
+        if (stored) {
+          setHistory(JSON.parse(stored));
+        } else {
+          setHistory([]);
+        }
+      } catch (err) {
+        console.error('Failed to load history from sessionStorage:', err);
       }
-    } catch (err) {
-      console.error('Failed to fetch history:', err);
     }
   };
 
@@ -71,10 +72,6 @@ export default function VideoDownloader() {
           .catch((err) => console.warn('ServiceWorker registration failed:', err));
       });
     }
-
-    return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-    };
   }, []);
 
   // Fetch preview details (title, thumbnail, formats)
@@ -108,82 +105,60 @@ export default function VideoDownloader() {
     }
   };
 
-  // Trigger video download
+  // Trigger video download statelessly
   const handleStartDownload = async () => {
     if (!url || !selectedQuality || !preview) return;
     setStatusMessage('');
     
     try {
-      const res = await fetch('/api/download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url,
-          quality_id: selectedQuality,
-          title: preview.title,
-          thumbnail: preview.thumbnail
-        })
-      });
-      
-      const data = await res.json();
-      if (res.ok && data.id) {
-        setDownloadJobId(data.id);
-        setDownloadProgress({ status: 'Starting...', percent: 10, done: false });
-        // Refresh history to show pending state
-        fetchHistory();
-      } else {
-        alert(data.error || 'Failed to start download.');
+      const selectedFormat = preview.qualities.find(q => q.id === selectedQuality);
+      if (!selectedFormat || !selectedFormat.url) {
+        alert('Could not find download URL for the selected quality.');
+        return;
       }
+      
+      // Build stateless pass-through stream proxy URL
+      const downloadProxyUrl = `/api/download?url=${encodeURIComponent(selectedFormat.url)}&title=${encodeURIComponent(preview.title)}&ext=${encodeURIComponent(selectedFormat.ext)}`;
+      
+      // Simulate progress feedback for visual excellence
+      setDownloadProgress({ status: 'Tunnelling stream...', percent: 40, done: false });
+      
+      setTimeout(() => {
+        setDownloadProgress({ status: 'Streaming to browser...', percent: 80, done: false });
+      }, 800);
+
+      setTimeout(() => {
+        setDownloadProgress(null);
+        setStatusMessage('Tunnelling started! Check your browser download folder.');
+        
+        // Add to sessionStorage history list
+        const newHistoryItem: HistoryItem = {
+          job_id: Math.random().toString(36).substring(7),
+          title: preview.title,
+          status: 'completed',
+          percent: 100,
+          created_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          direct_url: downloadProxyUrl
+        };
+        
+        const updatedHistory = [newHistoryItem, ...history].slice(0, 10);
+        setHistory(updatedHistory);
+        sessionStorage.setItem('download_history', JSON.stringify(updatedHistory));
+      }, 1500);
+
+      // Trigger standard browser file downloading
+      const link = document.createElement('a');
+      link.href = downloadProxyUrl;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
     } catch (err) {
       console.error('Error starting download:', err);
       alert('An error occurred while starting download.');
     }
   };
-
-  // Poll progress status
-  useEffect(() => {
-    if (!downloadJobId) return;
-
-    const checkProgress = async () => {
-      try {
-        const res = await fetch(`/api/progress/${downloadJobId}`);
-        if (!res.ok) throw new Error('Progress fetch failed');
-        
-        const data = await res.json();
-        setDownloadProgress({
-          status: data.status,
-          percent: data.percent,
-          done: data.done
-        });
-
-        if (data.done) {
-          if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-          setDownloadJobId(null);
-          fetchHistory();
-          
-          if (data.direct_url) {
-            // Trigger automatic force download
-            window.location.href = data.direct_url;
-          } else {
-            alert('Download failed: ' + (data.error || 'Unknown error'));
-          }
-        }
-      } catch (err) {
-        console.error('Polling error:', err);
-      }
-    };
-
-    // Run immediately then poll every 1s
-    checkProgress();
-    pollTimerRef.current = setInterval(checkProgress, 1000);
-
-    return () => {
-      if (pollTimerRef.current) {
-        clearInterval(pollTimerRef.current);
-        pollTimerRef.current = null;
-      }
-    };
-  }, [downloadJobId]);
 
   // Open password verification modal
   const openPasswordModal = (action: 'update' | 'clear-temp' | 'clear-history') => {
@@ -198,14 +173,27 @@ export default function VideoDownloader() {
     if (!passwordModal.action) return;
 
     const action = passwordModal.action;
-    let endpoint = '';
     
-    if (action === 'update') endpoint = '/api/admin/update';
-    else if (action === 'clear-temp') endpoint = '/api/admin/clear-temp';
-    else if (action === 'clear-history') endpoint = '/api/admin/clear-history';
+    if (password !== '1995') {
+      alert('Incorrect Password');
+      setPasswordModal({ open: false, action: null });
+      return;
+    }
 
     setPasswordModal({ open: false, action: null });
+
+    if (action === 'clear-history') {
+      sessionStorage.removeItem('download_history');
+      setHistory([]);
+      setPreview(null);
+      setUrl('');
+      setStatusMessage('Session download history cleared successfully.');
+      return;
+    }
+
+    // Call dynamic backend scripts (Update or Clear Cache)
     setLoading(true);
+    let endpoint = action === 'update' ? '/api/admin/update' : '/api/admin/clear-temp';
 
     try {
       const res = await fetch(endpoint, {
@@ -217,11 +205,6 @@ export default function VideoDownloader() {
       const data = await res.json();
       if (res.ok) {
         setStatusMessage(data.message || 'Operation executed successfully.');
-        if (action === 'clear-history') {
-          setHistory([]);
-          setPreview(null);
-          setUrl('');
-        }
       } else {
         alert(data.error || 'Operation failed.');
       }
@@ -234,8 +217,8 @@ export default function VideoDownloader() {
   };
 
   // Trigger direct download of previously scraped file
-  const handleSaveScraped = (jobId: string) => {
-    window.location.href = `/api/proxy_download/${jobId}`;
+  const handleSaveScraped = (directUrl: string) => {
+    window.location.href = directUrl;
   };
 
   return (
@@ -279,7 +262,7 @@ export default function VideoDownloader() {
           placeholder="Paste YouTube / video URL here"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          disabled={!mounted || loading || !!downloadJobId}
+          disabled={!mounted || loading || !!downloadProgress}
           suppressHydrationWarning
         />
       </div>
@@ -287,7 +270,7 @@ export default function VideoDownloader() {
       <button
         className="primary-btn"
         onClick={handleGetPreview}
-        disabled={!mounted || loading || !url.trim() || !!downloadJobId}
+        disabled={!mounted || loading || !url.trim() || !!downloadProgress}
         suppressHydrationWarning
       >
         {loading ? 'Processing...' : 'Get Preview'}
@@ -301,7 +284,7 @@ export default function VideoDownloader() {
       )}
 
       {/* Render quality options once preview is loaded */}
-      {preview && !downloadJobId && (
+      {preview && !downloadProgress && (
         <div className="preview-container">
           {preview.thumbnail && (
             <img src={preview.thumbnail} alt="Poster" className="preview-thumbnail" />
@@ -338,7 +321,7 @@ export default function VideoDownloader() {
       )}
 
       {/* Render active progress bar when downloading */}
-      {downloadJobId && downloadProgress && (
+      {downloadProgress && (
         <div className="preview-container">
           <div className="preview-title" style={{ fontSize: '14px', marginBottom: '8px' }}>
             {preview?.title || 'Downloading Video...'}
@@ -371,19 +354,15 @@ export default function VideoDownloader() {
                 {item.title}
               </div>
               <div>
-                {item.status === 'completed' ? (
+                {item.direct_url ? (
                   <button
                     className="badge-save"
-                    onClick={() => handleSaveScraped(item.job_id)}
+                    onClick={() => handleSaveScraped(item.direct_url!)}
                   >
                     Save
                   </button>
-                ) : item.status === 'failed' ? (
-                  <span className="badge-failed">Failed</span>
                 ) : (
-                  <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '500' }}>
-                    {item.percent}%
-                  </span>
+                  <span className="badge-failed">Failed</span>
                 )}
               </div>
             </div>
